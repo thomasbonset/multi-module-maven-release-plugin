@@ -169,6 +169,16 @@ public abstract class BaseMojo extends AbstractMojo {
     @Parameter(alias = "tagNameSeparator", required = false, readonly = true, defaultValue = "-", property = "tagNameSeparator")
     protected String tagNameSeparator;
  
+    @Parameter(alias = "productVersion",required = false, readonly = true, defaultValue = "", property = "productVersion")
+    protected String productVersion;
+    
+    @Parameter(alias = "reportOutputFolder",required = false, readonly = true, defaultValue = "./", property = "reportOutputFolder")
+    protected String reportOutputFolder;
+    
+    @Parameter(alias = "report",required = false, readonly = true, defaultValue = "false", property = "report")
+    protected boolean report;
+    
+    
     final void setSettings(final Settings settings) {
 		this.settings = settings;
 	}

@@ -7,8 +7,11 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.settings.io.DefaultSettingsWriter;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -17,6 +20,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
 /**
@@ -124,7 +128,7 @@ public class ReleaseMojo extends BaseMojo {
             repo.errorIfNotClean();
 
             ResolverWrapper resolverWrapper = new ResolverWrapper(factory, artifactResolver, remoteRepositories, localRepository);
-            Reactor reactor = Reactor.fromProjects(log, repo, project, projects, buildNumber, modulesToForceRelease, noChangesAction, resolverWrapper, versionNamer, tagNameSeparator);
+            Reactor reactor = Reactor.fromProjects(log, repo, project, projects, buildNumber, modulesToForceRelease, noChangesAction, resolverWrapper, versionNamer, tagNameSeparator, report, productVersion, reportOutputFolder);
             if (reactor == null) {
                 return;
             }
@@ -157,7 +161,32 @@ public class ReleaseMojo extends BaseMojo {
 
                 invoker.runMavenBuild(reactor);
                 revertChanges(log, repo, changedFiles, true); // throw if you can't revert as that is the root problem
-            } finally {
+                
+              if (report)
+              {
+                log.info("About to generate output file");
+                
+                JSONObject releaseOutput=new JSONObject();
+                releaseOutput.put("productRelease" , productVersion) ;
+                JSONArray modules = new JSONArray();
+               
+                for (ReleasableModule releasableModule : reactor.getModulesInBuildOrder()) {
+                	JSONObject module = new JSONObject();
+                	module.put("groupId" , releasableModule.getGroupId()) ;
+                	module.put("artifactId" , releasableModule.getArtifactId()) ;
+                	module.put("version" , releasableModule.getVersionToDependOn()) ;
+                	module.put("packaging" , releasableModule.getProject().getPackaging()) ;
+                	modules.add(module);	
+  			   }
+                releaseOutput.put("modulesReleased" , modules) ;
+                
+                FileWriter fw = new FileWriter(reportOutputFolder + "/releaseOutput-"+ System.currentTimeMillis()+ ".json");
+                fw.write(releaseOutput.toJSONString());
+        			fw.close();
+        		} 
+              }
+            
+             finally {
                 revertChanges(log, repo, changedFiles, false); // warn if you can't revert but keep throwing the original exception so the root cause isn't lost
             }
 
